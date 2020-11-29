@@ -80,6 +80,15 @@ public class Renderer {
 
             GuiVBO = glGenBuffers();
             glBindBuffer(GL_ARRAY_BUFFER, GuiVBO);
+            glBufferData(GL_ARRAY_BUFFER, new float[] {
+                    -0.2f, -0.2f, 0.0f, 0.0f,
+                    +0.2f, -0.2f, 1.0f, 0.0f,
+                    -0.2f, +0.2f, 0.0f, 1.0f,
+
+                    +0.2f, -0.2f, 1.0f, 0.0f,
+                    -0.2f, +0.2f, 0.0f, 1.0f,
+                    +0.2f, +0.2f, 1.0f, 1.0f
+            }, GL_STATIC_DRAW);
         }
 
         // init shaders
@@ -122,15 +131,15 @@ public class Renderer {
             glBindFragDataLocation(guiShaderProgram, 0, "pixelColor");
 
             glLinkProgram(guiShaderProgram);
-//            glUseProgram(guiShaderProgram);
-//
-//            int guiPosAttrib = glGetAttribLocation(guiShaderProgram, "position");
-//            glVertexAttribPointer(guiPosAttrib, 2, GL_FLOAT, false, 5 * Float.BYTES, 0);
-//            glEnableVertexAttribArray(guiPosAttrib);
-//
-//            int guiTextureAttrib = glGetAttribLocation(guiShaderProgram, "texPosition");
-//            glVertexAttribPointer(guiTextureAttrib, 2, GL_FLOAT, false, 5 * Float.BYTES, 2 * Float.BYTES);
-//            glEnableVertexAttribArray(guiTextureAttrib);
+            glUseProgram(guiShaderProgram);
+
+            int guiPosAttrib = glGetAttribLocation(guiShaderProgram, "position");
+            glVertexAttribPointer(guiPosAttrib, 2, GL_FLOAT, false, 5 * Float.BYTES, 0);
+            glEnableVertexAttribArray(guiPosAttrib);
+
+            int guiTextureAttrib = glGetAttribLocation(guiShaderProgram, "texPosition");
+            glVertexAttribPointer(guiTextureAttrib, 2, GL_FLOAT, false, 5 * Float.BYTES, 2 * Float.BYTES);
+            glEnableVertexAttribArray(guiTextureAttrib);
 
         } catch (IOException e) {
             e.printStackTrace();
@@ -155,6 +164,7 @@ public class Renderer {
             int viewLocation = glGetUniformLocation(shaderProgram, "view");
             int projectionLocation = glGetUniformLocation(shaderProgram, "projection");
 
+            glUseProgram(shaderProgram);
             glUniformMatrix4fv(modelLocation, false, modelMatrix);
             glUniformMatrix4fv(viewLocation, false, viewMatrix);
             glUniformMatrix4fv(projectionLocation, false, projectionMatrix);
@@ -203,6 +213,7 @@ public class Renderer {
 
                 glBindVertexArray(VAO);
                 glBindBuffer(GL_ARRAY_BUFFER, VBO);
+                glUseProgram(shaderProgram);
                 glBufferData(GL_ARRAY_BUFFER, chunkVertices, GL_DYNAMIC_DRAW);
 
                 chunkVertexCount = chunkVertices.length / 5;
@@ -213,11 +224,17 @@ public class Renderer {
         glBindBuffer(GL_ARRAY_BUFFER, VBO);
         glUseProgram(shaderProgram);
         glDrawArrays(GL_TRIANGLES, 0, chunkVertexCount);
+
+        glBindVertexArray(GuiVAO);
+        glBindBuffer(GL_ARRAY_BUFFER, GuiVBO);
+//        glUseProgram(guiShaderProgram);
+//        glDrawArrays(GL_TRIANGLES, 0, 6);
     }
 
     public void reshape(@SuppressWarnings("unused") long window, int width, int height) {
         float[] projectionMatrix = new Matrix4f().perspective((float) Math.toRadians(45.0f), (float) width / height, 0.1f, 100.0f).get(new float[16]);
         int projectionLocation = glGetUniformLocation(shaderProgram, "projection");
+        glUseProgram(shaderProgram);
         glUniformMatrix4fv(projectionLocation, false, projectionMatrix);
 
         glViewport(0, 0, width, height);
