@@ -26,9 +26,13 @@ public class Renderer {
     private boolean wireframe;
     private int chunkVertexCount = 0;
 
+    private int VAO;
+    private int VBO;
     private int shaderProgram;
 
-    private int VBO;
+    private int GuiVAO;
+    private int GuiVBO;
+    private int guiShaderProgram;
 
     public final Window window;
     private final ChunkVerticesGenerator chunkVerticesGenerator;
@@ -62,20 +66,26 @@ public class Renderer {
         glFrontFace(GL_CW);
 
         // init buffers
-        try (MemoryStack stack = MemoryStack.stackPush()) {
-            IntBuffer VAOBuffer = stack.mallocInt(1);
-            glGenVertexArrays(VAOBuffer);
-            int VAO = VAOBuffer.get(0);
+        {
+            // First (working) program:
+            VAO = glGenVertexArrays();
             glBindVertexArray(VAO);
 
-            IntBuffer VBOBuffer = stack.mallocInt(1);
-            glGenBuffers(VBOBuffer);
-            VBO = VBOBuffer.get(0);
+            VBO = glGenBuffers();
             glBindBuffer(GL_ARRAY_BUFFER, VBO);
+
+            // Gui program:
+            GuiVAO = glGenVertexArrays();
+            glBindVertexArray(GuiVAO);
+
+            GuiVBO = glGenBuffers();
+            glBindBuffer(GL_ARRAY_BUFFER, GuiVBO);
         }
 
         // init shaders
         try {
+            glBindVertexArray(VAO);
+            glBindBuffer(GL_ARRAY_BUFFER, VBO);
             // shader program for blocks
             String vertexSource = ResourceUtils.loadStringResource("./shaders/vertex.glsl");
             String fragmentSource = ResourceUtils.loadStringResource("./shaders/fragment.glsl");
@@ -98,6 +108,30 @@ public class Renderer {
             int textureAttrib = glGetAttribLocation(shaderProgram, "texPosition");
             glVertexAttribPointer(textureAttrib, 2, GL_FLOAT, false, 5 * Float.BYTES, 3 * Float.BYTES);
             glEnableVertexAttribArray(textureAttrib);
+
+
+            glBindVertexArray(GuiVAO);
+            glBindBuffer(GL_ARRAY_BUFFER, GuiVBO);
+            String guiVertexSource = ResourceUtils.loadStringResource("./shaders/guiVertex.glsl");
+            int guiVertexShader = createShader(GL_VERTEX_SHADER, guiVertexSource);
+
+            guiShaderProgram = glCreateProgram();
+            glAttachShader(guiShaderProgram, guiVertexShader);
+            glAttachShader(guiShaderProgram, fragmentShader);
+
+            glBindFragDataLocation(guiShaderProgram, 0, "pixelColor");
+
+            glLinkProgram(guiShaderProgram);
+//            glUseProgram(guiShaderProgram);
+//
+//            int guiPosAttrib = glGetAttribLocation(guiShaderProgram, "position");
+//            glVertexAttribPointer(guiPosAttrib, 2, GL_FLOAT, false, 5 * Float.BYTES, 0);
+//            glEnableVertexAttribArray(guiPosAttrib);
+//
+//            int guiTextureAttrib = glGetAttribLocation(guiShaderProgram, "texPosition");
+//            glVertexAttribPointer(guiTextureAttrib, 2, GL_FLOAT, false, 5 * Float.BYTES, 2 * Float.BYTES);
+//            glEnableVertexAttribArray(guiTextureAttrib);
+
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -167,12 +201,17 @@ public class Renderer {
                 //todo
                 float[] chunkVertices = chunkVerticesGenerator.getVertices(VoxelGame.getInstance().getWorld().chunk, textureAtlas);
 
+                glBindVertexArray(VAO);
+                glBindBuffer(GL_ARRAY_BUFFER, VBO);
                 glBufferData(GL_ARRAY_BUFFER, chunkVertices, GL_DYNAMIC_DRAW);
 
                 chunkVertexCount = chunkVertices.length / 5;
             }
         }
 
+        glBindVertexArray(VAO);
+        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+        glUseProgram(shaderProgram);
         glDrawArrays(GL_TRIANGLES, 0, chunkVertexCount);
     }
 

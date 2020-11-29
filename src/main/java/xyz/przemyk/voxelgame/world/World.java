@@ -9,9 +9,6 @@ public class World {
     public World(Renderer renderer) {
         playerCamera = new PlayerCamera(renderer, this);
         chunk = new Chunk();
-//
-//        chunk.setBlock(Blocks.BLOCK, 1, 0, 1);
-//        chunk.setBlock(Blocks.BLOCK, 0, 1, 0);
     }
 
     public void tick() {
