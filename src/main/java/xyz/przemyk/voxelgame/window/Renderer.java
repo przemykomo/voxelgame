@@ -2,14 +2,12 @@ package xyz.przemyk.voxelgame.window;
 
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
-import org.lwjgl.system.MemoryStack;
 import xyz.przemyk.voxelgame.ResourceUtils;
 import xyz.przemyk.voxelgame.VoxelGame;
 import xyz.przemyk.voxelgame.world.PlayerCamera;
 
 import java.awt.*;
 import java.io.IOException;
-import java.nio.IntBuffer;
 
 import static org.lwjgl.opengl.ARBVertexArrayObject.glBindVertexArray;
 import static org.lwjgl.opengl.GL11.GL_FLOAT;
@@ -81,13 +79,12 @@ public class Renderer {
             GuiVBO = glGenBuffers();
             glBindBuffer(GL_ARRAY_BUFFER, GuiVBO);
             glBufferData(GL_ARRAY_BUFFER, new float[] {
-                    -0.2f, -0.2f, 0.0f, 0.0f,
-                    +0.2f, -0.2f, 1.0f, 0.0f,
-                    -0.2f, +0.2f, 0.0f, 1.0f,
-
-                    +0.2f, -0.2f, 1.0f, 0.0f,
-                    -0.2f, +0.2f, 0.0f, 1.0f,
-                    +0.2f, +0.2f, 1.0f, 1.0f
+                    -0.05f, +0.05f, 0.0f, 0.5f,
+                    +0.05f, +0.05f, 0.15625f, 0.5f,
+                    -0.05f, -0.05f, 0.0f, 0.65625f,
+                    -0.05f, -0.05f, 0.0f, 0.65625f,
+                    +0.05f, +0.05f, 0.15625f, 0.5f,
+                    +0.05f, -0.05f, 0.15625f, 0.65625f
             }, GL_STATIC_DRAW);
         }
 
@@ -134,11 +131,11 @@ public class Renderer {
             glUseProgram(guiShaderProgram);
 
             int guiPosAttrib = glGetAttribLocation(guiShaderProgram, "position");
-            glVertexAttribPointer(guiPosAttrib, 2, GL_FLOAT, false, 5 * Float.BYTES, 0);
+            glVertexAttribPointer(guiPosAttrib, 2, GL_FLOAT, false, 4 * Float.BYTES, 0);
             glEnableVertexAttribArray(guiPosAttrib);
 
             int guiTextureAttrib = glGetAttribLocation(guiShaderProgram, "texPosition");
-            glVertexAttribPointer(guiTextureAttrib, 2, GL_FLOAT, false, 5 * Float.BYTES, 2 * Float.BYTES);
+            glVertexAttribPointer(guiTextureAttrib, 2, GL_FLOAT, false, 4 * Float.BYTES, 2 * Float.BYTES);
             glEnableVertexAttribArray(guiTextureAttrib);
 
         } catch (IOException e) {
@@ -157,17 +154,15 @@ public class Renderer {
             float[] modelMatrix = new Matrix4f().get(new float[16]);
             float[] viewMatrix = new Matrix4f().lookAt(playerCamera.position, new Vector3f(playerCamera.position).add(playerCamera.front), playerCamera.up).get(new float[16]);
 
-            Point windowSize = window.getWindowSize();
-            float[] projectionMatrix = new Matrix4f().perspective((float) Math.toRadians(45.0f), (float) windowSize.x / (float) windowSize.y, 0.1f, 100.0f).get(new float[16]);
-
             int modelLocation = glGetUniformLocation(shaderProgram, "model");
             int viewLocation = glGetUniformLocation(shaderProgram, "view");
-            int projectionLocation = glGetUniformLocation(shaderProgram, "projection");
 
             glUseProgram(shaderProgram);
             glUniformMatrix4fv(modelLocation, false, modelMatrix);
             glUniformMatrix4fv(viewLocation, false, viewMatrix);
-            glUniformMatrix4fv(projectionLocation, false, projectionMatrix);
+
+            Point windowSize = window.getWindowSize();
+            reshape(window.getWindowPointer(), windowSize.x, windowSize.y);
         }
     }
 
@@ -202,6 +197,7 @@ public class Renderer {
                 PlayerCamera playerCamera = VoxelGame.getInstance().getWorld().playerCamera;
                 int viewLocation = glGetUniformLocation(shaderProgram, "view");
                 Matrix4f viewMatrix = new Matrix4f().lookAt(playerCamera.position, new Vector3f(playerCamera.position).add(playerCamera.front), playerCamera.up);
+                glUseProgram(shaderProgram);
                 glUniformMatrix4fv(viewLocation, false, viewMatrix.get(new float[16]));
             }
 
@@ -227,15 +223,20 @@ public class Renderer {
 
         glBindVertexArray(GuiVAO);
         glBindBuffer(GL_ARRAY_BUFFER, GuiVBO);
-//        glUseProgram(guiShaderProgram);
-//        glDrawArrays(GL_TRIANGLES, 0, 6);
+        glUseProgram(guiShaderProgram);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
     }
 
     public void reshape(@SuppressWarnings("unused") long window, int width, int height) {
-        float[] projectionMatrix = new Matrix4f().perspective((float) Math.toRadians(45.0f), (float) width / height, 0.1f, 100.0f).get(new float[16]);
+        float aspectRatio = (float) width / height;
+        float[] projectionMatrix = new Matrix4f().perspective((float) Math.toRadians(45.0f), aspectRatio, 0.1f, 100.0f).get(new float[16]);
         int projectionLocation = glGetUniformLocation(shaderProgram, "projection");
         glUseProgram(shaderProgram);
         glUniformMatrix4fv(projectionLocation, false, projectionMatrix);
+
+        int aspectRatioLocation = glGetUniformLocation(guiShaderProgram, "aspectRatio");
+        glUseProgram(guiShaderProgram);
+        glUniform1f(aspectRatioLocation, aspectRatio);
 
         glViewport(0, 0, width, height);
     }
