@@ -31,12 +31,12 @@ public class InputHandler {
         World world = VoxelGame.getInstance().getWorld();
         if (action == GLFW_PRESS) {
             switch (key) {
-                case GLFW_KEY_W -> world.playerCamera.startMoving(Direction.FORWARD);
-                case GLFW_KEY_S -> world.playerCamera.startMoving(Direction.BACKWARD);
-                case GLFW_KEY_A -> world.playerCamera.startMoving(Direction.LEFT);
-                case GLFW_KEY_D -> world.playerCamera.startMoving(Direction.RIGHT);
-                case GLFW_KEY_SPACE -> world.playerCamera.startMoving(Direction.UP);
-                case GLFW_KEY_LEFT_CONTROL -> world.playerCamera.startMoving(Direction.DOWN);
+                case GLFW_KEY_W -> world.playerEntity.startMoving(Direction.FORWARD);
+                case GLFW_KEY_S -> world.playerEntity.startMoving(Direction.BACKWARD);
+                case GLFW_KEY_A -> world.playerEntity.startMoving(Direction.LEFT);
+                case GLFW_KEY_D -> world.playerEntity.startMoving(Direction.RIGHT);
+                case GLFW_KEY_SPACE -> world.playerEntity.startMoving(Direction.UP);
+                case GLFW_KEY_LEFT_CONTROL -> world.playerEntity.startMoving(Direction.DOWN);
             }
         } else if (action == GLFW_RELEASE) {
             switch (key) {
@@ -52,12 +52,12 @@ public class InputHandler {
                     }
                 }
 
-                case GLFW_KEY_W -> world.playerCamera.stopMoving(Direction.FORWARD);
-                case GLFW_KEY_S -> world.playerCamera.stopMoving(Direction.BACKWARD);
-                case GLFW_KEY_A -> world.playerCamera.stopMoving(Direction.LEFT);
-                case GLFW_KEY_D -> world.playerCamera.stopMoving(Direction.RIGHT);
-                case GLFW_KEY_SPACE -> world.playerCamera.stopMoving(Direction.UP);
-                case GLFW_KEY_LEFT_CONTROL -> world.playerCamera.stopMoving(Direction.DOWN);
+                case GLFW_KEY_W -> world.playerEntity.stopMoving(Direction.FORWARD);
+                case GLFW_KEY_S -> world.playerEntity.stopMoving(Direction.BACKWARD);
+                case GLFW_KEY_A -> world.playerEntity.stopMoving(Direction.LEFT);
+                case GLFW_KEY_D -> world.playerEntity.stopMoving(Direction.RIGHT);
+                case GLFW_KEY_SPACE -> world.playerEntity.stopMoving(Direction.UP);
+                case GLFW_KEY_LEFT_CONTROL -> world.playerEntity.stopMoving(Direction.DOWN);
             }
         }
     }
@@ -70,15 +70,15 @@ public class InputHandler {
         lastYPos = yPos;
 
         if (xOffset != 0 || yOffset != 0) {
-            VoxelGame.getInstance().getWorld().playerCamera.rotate(xOffset, yOffset);
+            VoxelGame.getInstance().getWindow().getRenderer().getCamera().rotate(xOffset, yOffset);
         }
     }
 
     protected void mouseButtonCallback(long window, int button, int action, int mods) {
         if (action == GLFW_PRESS) {
             switch (button) {
-                case GLFW_MOUSE_BUTTON_LEFT -> VoxelGame.getInstance().getWorld().playerCamera.breakBlock();
-                case GLFW_MOUSE_BUTTON_RIGHT -> VoxelGame.getInstance().getWorld().playerCamera.placeBlock(Blocks.BLOCK);
+                case GLFW_MOUSE_BUTTON_LEFT -> VoxelGame.getInstance().getWorld().playerEntity.breakBlock();
+                case GLFW_MOUSE_BUTTON_RIGHT -> VoxelGame.getInstance().getWorld().playerEntity.placeBlock(Blocks.BLOCK);
             }
         }
     }

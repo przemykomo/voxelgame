@@ -21,7 +21,7 @@ public class VoxelGame {
 
     private VoxelGame() {
         window = new Window();
-        world = new World(window.getRenderer());
+        world = new World();
     }
 
     public World getWorld() {
@@ -38,14 +38,23 @@ public class VoxelGame {
         long windowPointer = window.getWindowPointer();
         Renderer renderer = window.getRenderer();
 
+        Thread worldThread = new Thread(world);
+        worldThread.start();
+
         while (!glfwWindowShouldClose(windowPointer)) {
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-            world.tick();
             renderer.display();
 
             glfwSwapBuffers(windowPointer);
             glfwPollEvents();
+        }
+
+        world.stop();
+        try {
+            worldThread.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
         }
 
         glfwTerminate();

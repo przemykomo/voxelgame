@@ -4,7 +4,9 @@ import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import xyz.przemyk.voxelgame.ResourceUtils;
 import xyz.przemyk.voxelgame.VoxelGame;
-import xyz.przemyk.voxelgame.world.PlayerCamera;
+import xyz.przemyk.voxelgame.world.Chunk;
+import xyz.przemyk.voxelgame.world.PlayerEntity;
+import xyz.przemyk.voxelgame.world.World;
 
 import java.awt.*;
 import java.io.IOException;
@@ -17,7 +19,6 @@ import static org.lwjgl.opengl.GL30C.glBindFragDataLocation;
 
 public class Renderer {
 
-    private boolean updateCamera;
     private boolean updateWireframe;
     private boolean updateChunk;
 
@@ -35,15 +36,12 @@ public class Renderer {
     public final Window window;
     private final ChunkVerticesGenerator chunkVerticesGenerator;
     private final TextureAtlas textureAtlas;
+    private PlayerCamera playerCamera;
 
     public Renderer(Window window) {
         this.window = window;
         this.chunkVerticesGenerator = new ChunkVerticesGenerator();
         this.textureAtlas = new TextureAtlas();
-    }
-
-    public synchronized void updateCamera() {
-        updateCamera = true;
     }
 
     public synchronized void updateWireframe() {
@@ -54,7 +52,9 @@ public class Renderer {
         updateChunk = true;
     }
 
+    @SuppressWarnings("SynchronizationOnLocalVariableOrMethodParameter")
     void init() {
+        playerCamera = new PlayerCamera(VoxelGame.getInstance().getWorld().playerEntity, this);
         updateChunk();
 
         glClearColor(0.3f, 0.3f, 0.3f, 1);
@@ -150,16 +150,20 @@ public class Renderer {
 
         // init matrices
         {
-            PlayerCamera playerCamera = VoxelGame.getInstance().getWorld().playerCamera;
+            PlayerEntity playerEntityCamera = VoxelGame.getInstance().getWorld().playerEntity;
             float[] modelMatrix = new Matrix4f().get(new float[16]);
-            float[] viewMatrix = new Matrix4f().lookAt(playerCamera.position, new Vector3f(playerCamera.position).add(playerCamera.front), playerCamera.up).get(new float[16]);
+
 
             int modelLocation = glGetUniformLocation(shaderProgram, "model");
             int viewLocation = glGetUniformLocation(shaderProgram, "view");
 
             glUseProgram(shaderProgram);
             glUniformMatrix4fv(modelLocation, false, modelMatrix);
-            glUniformMatrix4fv(viewLocation, false, viewMatrix);
+
+            synchronized (playerEntityCamera) {
+                float[] viewMatrix = new Matrix4f().lookAt(playerEntityCamera.position, new Vector3f(playerEntityCamera.position).add(playerEntityCamera.front), playerEntityCamera.up).get(new float[16]);
+                glUniformMatrix4fv(viewLocation, false, viewMatrix);
+            }
 
             Point windowSize = window.getWindowSize();
             reshape(window.getWindowPointer(), windowSize.x, windowSize.y);
@@ -177,7 +181,24 @@ public class Renderer {
         return shader;
     }
 
+    private int renderTicksSinceLastWorldTick = 0;
+    private int renderTicksPerWordTick = 3;
+    private int lastWorldTick = 0;
+    private float partialTicks = 0.0f;
+
+    @SuppressWarnings("SynchronizationOnLocalVariableOrMethodParameter")
     public void display() {
+        World world = VoxelGame.getInstance().getWorld();
+        int worldTicks = world.ticks.get();
+        if (lastWorldTick < worldTicks) {
+            lastWorldTick = worldTicks;
+            partialTicks = 0.0f;
+            renderTicksPerWordTick = renderTicksSinceLastWorldTick;
+            renderTicksSinceLastWorldTick = 0;
+        }
+        partialTicks += (float) renderTicksSinceLastWorldTick / renderTicksPerWordTick;
+        playerCamera.update(partialTicks);
+
         synchronized (this) {
             if (updateWireframe) {
                 if (wireframe) {
@@ -191,28 +212,20 @@ public class Renderer {
                 updateWireframe = false;
             }
 
-            if (updateCamera) {
-                updateCamera = false;
-
-                PlayerCamera playerCamera = VoxelGame.getInstance().getWorld().playerCamera;
-                int viewLocation = glGetUniformLocation(shaderProgram, "view");
-                Matrix4f viewMatrix = new Matrix4f().lookAt(playerCamera.position, new Vector3f(playerCamera.position).add(playerCamera.front), playerCamera.up);
-                glUseProgram(shaderProgram);
-                glUniformMatrix4fv(viewLocation, false, viewMatrix.get(new float[16]));
-            }
-
             if (updateChunk) {
                 updateChunk = false;
 
                 //todo
-                float[] chunkVertices = chunkVerticesGenerator.getVertices(VoxelGame.getInstance().getWorld().chunk, textureAtlas);
+                Chunk chunk = world.chunk;
 
                 glBindVertexArray(VAO);
                 glBindBuffer(GL_ARRAY_BUFFER, VBO);
                 glUseProgram(shaderProgram);
-                glBufferData(GL_ARRAY_BUFFER, chunkVertices, GL_DYNAMIC_DRAW);
-
-                chunkVertexCount = chunkVertices.length / 5;
+                synchronized (chunk) {
+                    float[] chunkVertices = chunkVerticesGenerator.getVertices(chunk, textureAtlas);
+                    glBufferData(GL_ARRAY_BUFFER, chunkVertices, GL_DYNAMIC_DRAW);
+                    chunkVertexCount = chunkVertices.length / 5;
+                }
             }
         }
 
@@ -225,6 +238,8 @@ public class Renderer {
         glBindBuffer(GL_ARRAY_BUFFER, GuiVBO);
         glUseProgram(guiShaderProgram);
         glDrawArrays(GL_TRIANGLES, 0, 6);
+
+        ++renderTicksSinceLastWorldTick;
     }
 
     public void reshape(@SuppressWarnings("unused") long window, int width, int height) {
@@ -239,5 +254,13 @@ public class Renderer {
         glUniform1f(aspectRatioLocation, aspectRatio);
 
         glViewport(0, 0, width, height);
+    }
+
+    public int getShaderProgram() {
+        return shaderProgram;
+    }
+
+    public PlayerCamera getCamera() {
+        return playerCamera;
     }
 }
